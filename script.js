@@ -1,583 +1,393 @@
 /* =========================
-BOOT PRELOADER
-========================= */
+   SNIPX — INTERACTIONS
+   ========================= */
 
-const preloader = document.getElementById("preloader");
-const bootProgress = document.getElementById("bootProgress");
-const bootPercent = document.getElementById("bootPercent");
-const bootText = document.getElementById("bootText");
+const $ = (selector, parent = document) => parent.querySelector(selector);
+const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
+
+/* -------------------------
+   BOOT PRELOADER
+------------------------- */
+const preloader = $("#preloader");
+const bootProgress = $("#bootProgress");
+const bootPercent = $("#bootPercent");
+const bootText = $("#bootText");
+
+const bootMessages = [
+    [0, "INITIALIZING SYSTEM..."],
+    [28, "LOADING PROFILE..."],
+    [56, "CONNECTING PROJECT MODULES..."],
+    [82, "VERIFYING INTERFACE..."],
+    [100, "SYSTEM READY."]
+];
 
 let progress = 0;
 
-const bootMessages = [
-    "INITIALIZING SYSTEM...",
-    "LOADING DEVELOPER PROFILE...",
-    "CONNECTING MODULES...",
-    "LOADING PROJECT DATA...",
-    "SYSTEM READY."
-];
-
-
-const bootInterval = setInterval(() => {
-
-    progress += Math.floor(Math.random() * 8) + 3;
-
-    if (progress > 100) {
-        progress = 100;
-    }
-
-    bootProgress.style.width = progress + "%";
-    bootPercent.textContent = progress + "%";
-
-
-    if (progress < 25) {
-
-        bootText.textContent = bootMessages[0];
-
-    } else if (progress < 50) {
-
-        bootText.textContent = bootMessages[1];
-
-    } else if (progress < 75) {
-
-        bootText.textContent = bootMessages[2];
-
-    } else if (progress < 100) {
-
-        bootText.textContent = bootMessages[3];
-
-    } else {
-
-        bootText.textContent = bootMessages[4];
-
-        clearInterval(bootInterval);
-
-
-        setTimeout(() => {
-
-            preloader.classList.add("hidden");
-
-        }, 600);
-
-    }
-
-}, 120);
-
-
-/* =========================
-CUSTOM CURSOR
-========================= */
-
-const cursorDot = document.querySelector(".cursor-dot");
-const cursorOutline = document.querySelector(".cursor-outline");
-
-
-window.addEventListener("mousemove", (e) => {
-
-    cursorDot.style.left = e.clientX + "px";
-    cursorDot.style.top = e.clientY + "px";
-
-
-    setTimeout(() => {
-
-        cursorOutline.style.left = e.clientX + "px";
-        cursorOutline.style.top = e.clientY + "px";
-
-    }, 70);
-
-});
-
-
-const hoverElements = document.querySelectorAll(
-    "a, button, .project-card, .skill-card"
-);
-
-
-hoverElements.forEach(element => {
-
-    element.addEventListener("mouseenter", () => {
-
-        cursorOutline.classList.add("hover");
-
-    });
-
-
-    element.addEventListener("mouseleave", () => {
-
-        cursorOutline.classList.remove("hover");
-
-    });
-
-});
-
-
-/* =========================
-SCROLL PROGRESS
-========================= */
-
-const scrollProgress = document.querySelector(".scroll-progress");
-
-
-window.addEventListener("scroll", () => {
-
-    const scrollTop =
-        document.documentElement.scrollTop;
-
-    const scrollHeight =
-        document.documentElement.scrollHeight -
-        document.documentElement.clientHeight;
-
-    const scrollPercent =
-        (scrollTop / scrollHeight) * 100;
-
-    scrollProgress.style.width =
-        scrollPercent + "%";
-
-});
-
-
-/* =========================
-MOBILE MENU
-========================= */
-
-const menuBtn = document.getElementById("menuBtn");
-const mobileMenu = document.getElementById("mobileMenu");
-
-
-if (menuBtn) {
-
-    menuBtn.addEventListener("click", () => {
-
-        mobileMenu.classList.toggle("active");
-
-    });
-
+if (preloader) {
+    const boot = setInterval(() => {
+        progress = Math.min(100, progress + Math.floor(Math.random() * 10) + 7);
+
+        bootProgress.style.width = `${progress}%`;
+        bootPercent.textContent = `${progress}%`;
+
+        const current = [...bootMessages].reverse().find(item => progress >= item[0]);
+        if (current) bootText.textContent = current[1];
+
+        if (progress >= 100) {
+            clearInterval(boot);
+            setTimeout(() => preloader.classList.add("hidden"), 250);
+        }
+    }, 80);
 }
 
+/* -------------------------
+   CUSTOM CURSOR
+   Uses requestAnimationFrame
+   instead of creating timers
+   on every mouse event.
+------------------------- */
+const cursorDot = $(".cursor-dot");
+const cursorOutline = $(".cursor-outline");
 
-document
-    .querySelectorAll(".mobile-menu a")
-    .forEach(link => {
+if (window.matchMedia("(pointer: fine)").matches && cursorDot && cursorOutline) {
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let outlineX = mouseX;
+    let outlineY = mouseY;
 
-        link.addEventListener("click", () => {
+    window.addEventListener("mousemove", event => {
+        mouseX = event.clientX;
+        mouseY = event.clientY;
+        cursorDot.style.left = `${mouseX}px`;
+        cursorDot.style.top = `${mouseY}px`;
+    }, { passive: true });
 
-            mobileMenu.classList.remove("active");
+    const renderCursor = () => {
+        outlineX += (mouseX - outlineX) * 0.16;
+        outlineY += (mouseY - outlineY) * 0.16;
+        cursorOutline.style.left = `${outlineX}px`;
+        cursorOutline.style.top = `${outlineY}px`;
+        requestAnimationFrame(renderCursor);
+    };
 
-        });
+    renderCursor();
 
+    const cursorTargets = $$("a, button, .project-card, .featured-project");
+    cursorTargets.forEach(target => {
+        target.addEventListener("mouseenter", () => cursorOutline.classList.add("hover"));
+        target.addEventListener("mouseleave", () => cursorOutline.classList.remove("hover"));
+    });
+}
+
+/* -------------------------
+   SCROLL PROGRESS
+------------------------- */
+const scrollProgress = $(".scroll-progress");
+
+const updateScrollProgress = () => {
+    if (!scrollProgress) return;
+    const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    const percent = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
+    scrollProgress.style.width = `${percent}%`;
+};
+
+window.addEventListener("scroll", updateScrollProgress, { passive: true });
+updateScrollProgress();
+
+/* -------------------------
+   MOBILE MENU
+------------------------- */
+const menuBtn = $("#menuBtn");
+const mobileMenu = $("#mobileMenu");
+
+if (menuBtn && mobileMenu) {
+    menuBtn.addEventListener("click", () => {
+        const active = mobileMenu.classList.toggle("active");
+        menuBtn.setAttribute("aria-expanded", String(active));
     });
 
+    $$(".mobile-menu a").forEach(link => {
+        link.addEventListener("click", () => {
+            mobileMenu.classList.remove("active");
+            menuBtn.setAttribute("aria-expanded", "false");
+        });
+    });
+}
 
-/* =========================
-LIVE CLOCK
-========================= */
+/* -------------------------
+   LIVE CLOCK
+------------------------- */
+const liveClock = $("#liveClock");
 
-const liveClock =
-    document.getElementById("liveClock");
-
-
-function updateClock() {
-
+const updateClock = () => {
     if (!liveClock) return;
 
-    const now = new Date();
-
-    const hours =
-        String(now.getHours()).padStart(2, "0");
-
-    const minutes =
-        String(now.getMinutes()).padStart(2, "0");
-
-    const seconds =
-        String(now.getSeconds()).padStart(2, "0");
-
-
-    liveClock.textContent =
-        `${hours}:${minutes}:${seconds}`;
-
-}
-
+    liveClock.textContent = new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    }).format(new Date());
+};
 
 updateClock();
-
 setInterval(updateClock, 1000);
 
-
-/* =========================
-TYPING EFFECT
-========================= */
-
-const typingElement =
-    document.getElementById("typing");
-
-
+/* -------------------------
+   TYPING EFFECT
+------------------------- */
+const typingElement = $("#typing");
 const roles = [
     "FIVEM DEVELOPER",
+    "FULL-STACK DEVELOPER",
     "UI / UX DESIGNER",
-    "WEB DEVELOPER",
-    "CREATIVE DESIGNER"
+    "SYSTEM BUILDER"
 ];
-
 
 let roleIndex = 0;
 let charIndex = 0;
 let deleting = false;
 
-
-function typeEffect() {
-
+const typeEffect = () => {
     if (!typingElement) return;
 
-
-    const currentRole =
-        roles[roleIndex];
-
+    const role = roles[roleIndex];
 
     if (!deleting) {
-
-        typingElement.textContent =
-            currentRole.substring(
-                0,
-                charIndex + 1
-            );
-
         charIndex++;
+        typingElement.textContent = role.slice(0, charIndex);
 
-
-        if (charIndex === currentRole.length) {
-
+        if (charIndex >= role.length) {
             deleting = true;
-
-            setTimeout(
-                typeEffect,
-                1500
-            );
-
+            setTimeout(typeEffect, 1500);
             return;
-
         }
-
     } else {
-
-        typingElement.textContent =
-            currentRole.substring(
-                0,
-                charIndex - 1
-            );
-
         charIndex--;
+        typingElement.textContent = role.slice(0, charIndex);
 
-
-        if (charIndex === 0) {
-
+        if (charIndex <= 0) {
             deleting = false;
-
-            roleIndex =
-                (roleIndex + 1) %
-                roles.length;
-
+            roleIndex = (roleIndex + 1) % roles.length;
         }
-
     }
 
-
-    const speed =
-        deleting ? 45 : 90;
-
-
-    setTimeout(
-        typeEffect,
-        speed
-    );
-
-}
-
+    setTimeout(typeEffect, deleting ? 42 : 78);
+};
 
 typeEffect();
 
-
-/* =========================
-SCROLL REVEAL
-========================= */
-
-const revealElements =
-    document.querySelectorAll(
-        ".skill-card, .project-card, .mini-card, .service-item, .terminal-window"
-    );
-
-
-const revealObserver =
-    new IntersectionObserver(
-
-        (entries) => {
-
-            entries.forEach(entry => {
-
-                if (entry.isIntersecting) {
-
-                    entry.target.style.opacity =
-                        "1";
-
-                    entry.target.style.transform =
-                        "translateY(0)";
-
-                }
-
-            });
-
-        },
-
-        {
-            threshold: 0.1
-        }
-
-    );
-
-
-revealElements.forEach(element => {
-
-    element.style.opacity = "0";
-
-    element.style.transform =
-        "translateY(30px)";
-
-    element.style.transition =
-        "0.6s ease";
-
-    revealObserver.observe(element);
-
-});
-
-
-/* =========================
-SKILL PROGRESS ANIMATION
-========================= */
-
-const progressBars =
-    document.querySelectorAll(
-        ".skill-progress"
-    );
-
-
-const progressObserver =
-    new IntersectionObserver(
-
-        (entries) => {
-
-            entries.forEach(entry => {
-
-                if (entry.isIntersecting) {
-
-                    const progress =
-                        entry.target.dataset.progress;
-
-                    entry.target.style.width =
-                        progress + "%";
-
-
-                    progressObserver.unobserve(
-                        entry.target
-                    );
-
-                }
-
-            });
-
-        },
-
-        {
-            threshold: 0.5
-        }
-
-    );
-
-
-progressBars.forEach(bar => {
-
-    progressObserver.observe(bar);
-
-});
-
-
-/* =========================
-PROJECT MODAL
-========================= */
-
-const projectCards =
-    document.querySelectorAll(
-        ".project-card"
-    );
-
-
-const projectModal =
-    document.getElementById(
-        "projectModal"
-    );
-
-
-const modalOverlay =
-    document.getElementById(
-        "modalOverlay"
-    );
-
-
-const modalClose =
-    document.getElementById(
-        "modalClose"
-    );
-
-
-const modalTitle =
-    document.getElementById(
-        "modalTitle"
-    );
-
-
-const modalCategory =
-    document.getElementById(
-        "modalCategory"
-    );
-
-
-const modalDescription =
-    document.getElementById(
-        "modalDescription"
-    );
-
-
-const modalTechList =
-    document.getElementById(
-        "modalTechList"
-    );
-
-
-projectCards.forEach(card => {
-
-    card.addEventListener("click", () => {
-
-        const title =
-            card.dataset.title ||
-            "PROJECT";
-
-
-        const category =
-            card.dataset.category ||
-            "DEVELOPMENT";
-
-
-        const description =
-            card.dataset.description ||
-            "No project description available.";
-
-
-        const tech =
-            card.dataset.tech ||
-            "";
-
-
-        modalTitle.textContent =
-            title;
-
-
-        modalCategory.textContent =
-            category;
-
-
-        modalDescription.textContent =
-            description;
-
-
-        modalTechList.innerHTML =
-            "";
-
-
-        const technologies =
-            tech.split(",");
-
-
-        technologies.forEach(item => {
-
-            if (item.trim() !== "") {
-
-                const techItem =
-                    document.createElement(
-                        "span"
-                    );
-
-                techItem.textContent =
-                    item.trim();
-
-
-                modalTechList.appendChild(
-                    techItem
-                );
-
+/* -------------------------
+   SCROLL REVEAL
+------------------------- */
+const revealElements = $$(".reveal");
+
+if ("IntersectionObserver" in window) {
+    const revealObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add("revealed");
+                revealObserver.unobserve(entry.target);
             }
+        });
+    }, { threshold: 0.12 });
 
+    revealElements.forEach((element, index) => {
+        element.style.transitionDelay = `${Math.min(index * 35, 180)}ms`;
+        revealObserver.observe(element);
+    });
+} else {
+    revealElements.forEach(element => element.classList.add("revealed"));
+}
+
+/* -------------------------
+   PROJECT MODAL
+------------------------- */
+const projectModal = $("#projectModal");
+const modalOverlay = $("#modalOverlay");
+const modalClose = $("#modalClose");
+const modalTitle = $("#modalTitle");
+const modalCategory = $("#modalCategory");
+const modalDescription = $("#modalDescription");
+const modalTechList = $("#modalTechList");
+
+const openModal = card => {
+    if (!projectModal) return;
+
+    modalTitle.textContent = card.dataset.title || "PROJECT";
+    modalCategory.textContent = card.dataset.category || "DEVELOPMENT";
+    modalDescription.textContent = card.dataset.description || "Project description unavailable.";
+
+    modalTechList.replaceChildren();
+
+    (card.dataset.tech || "")
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean)
+        .forEach(tech => {
+            const tag = document.createElement("span");
+            tag.textContent = tech;
+            modalTechList.appendChild(tag);
         });
 
+    projectModal.classList.add("active");
+    projectModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+};
 
-        projectModal.classList.add(
-            "active"
-        );
+const closeModal = () => {
+    if (!projectModal) return;
+    projectModal.classList.remove("active");
+    projectModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+};
 
-
-        document.body.style.overflow =
-            "hidden";
-
+$$(".project-card, .featured-project").forEach(card => {
+    card.addEventListener("click", event => {
+        if (event.target.closest("a")) return;
+        openModal(card);
     });
-
 });
 
+modalClose?.addEventListener("click", closeModal);
+modalOverlay?.addEventListener("click", closeModal);
 
-function closeModal() {
-
-    projectModal.classList.remove(
-        "active"
-    );
-
-
-    document.body.style.overflow =
-        "";
-
-}
-
-
-if (modalClose) {
-
-    modalClose.addEventListener(
-        "click",
-        closeModal
-    );
-
-}
-
-
-if (modalOverlay) {
-
-    modalOverlay.addEventListener(
-        "click",
-        closeModal
-    );
-
-}
-
-
-document.addEventListener(
-    "keydown",
-    (event) => {
-
-        if (
-            event.key === "Escape" &&
-            projectModal &&
-            projectModal.classList.contains(
-                "active"
-            )
-        ) {
-
-            closeModal();
-
-        }
-
+document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && projectModal?.classList.contains("active")) {
+        closeModal();
     }
-);
+});
+
+/* -------------------------
+   ACTIVE NAV LINK
+------------------------- */
+const sections = $$("main section[id]");
+const navLinks = $$(".nav-links a");
+
+if ("IntersectionObserver" in window) {
+    const navObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+
+            navLinks.forEach(link => {
+                link.classList.toggle(
+                    "active",
+                    link.getAttribute("href") === `#${entry.target.id}`
+                );
+            });
+        });
+    }, { rootMargin: "-35% 0px -55% 0px" });
+
+    sections.forEach(section => navObserver.observe(section));
+}
+
+
+/* -------------------------
+   PREMIUM MOTION
+------------------------- */
+
+// Start the hero only after the boot screen has finished.
+const startHeroMotion = () => {
+    document.documentElement.classList.add("page-ready");
+    $$(".hero .reveal").forEach(element => element.classList.add("revealed"));
+};
+
+if (preloader) {
+    const originalHide = () => {
+        preloader.classList.add("hidden");
+        setTimeout(startHeroMotion, 180);
+    };
+
+    // The boot interval above already controls the loader.
+    // This fallback ensures the hero becomes visible if the loader is skipped.
+    setTimeout(() => {
+        if (!preloader.classList.contains("hidden")) return;
+        startHeroMotion();
+    }, 2400);
+} else {
+    startHeroMotion();
+}
+
+// Gentle mouse parallax for the hero background and profile card.
+if (window.matchMedia("(pointer: fine)").matches) {
+    const hero = $(".hero");
+    const card = $(".developer-card");
+    const glowOne = $(".glow-one");
+    const glowTwo = $(".glow-two");
+
+    if (hero && card) {
+        let tx = 0, ty = 0, cx = 0, cy = 0;
+        let raf = 0;
+
+        hero.addEventListener("mousemove", event => {
+            const rect = hero.getBoundingClientRect();
+            tx = ((event.clientX - rect.left) / rect.width - .5) * 2;
+            ty = ((event.clientY - rect.top) / rect.height - .5) * 2;
+
+            if (!raf) raf = requestAnimationFrame(() => {
+                cx += (tx - cx) * .08;
+                cy += (ty - cy) * .08;
+
+                card.style.setProperty("--mx", `${cx * 8}px`);
+                card.style.setProperty("--my", `${cy * 8}px`);
+
+                if (glowOne) glowOne.style.translate = `${cx * 18}px ${cy * 14}px`;
+                if (glowTwo) glowTwo.style.translate = `${cx * -12}px ${cy * -10}px`;
+
+                raf = 0;
+            });
+        });
+
+        hero.addEventListener("mouseleave", () => {
+            card.style.setProperty("--mx", "0px");
+            card.style.setProperty("--my", "0px");
+        });
+    }
+}
+
+// Add a subtle 3D tilt to the developer card.
+const developerCard = $(".developer-card");
+
+if (developerCard && window.matchMedia("(pointer: fine)").matches) {
+    developerCard.addEventListener("mousemove", event => {
+        const rect = developerCard.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width - .5;
+        const y = (event.clientY - rect.top) / rect.height - .5;
+
+        developerCard.style.transform =
+            `translate3d(${x * 8}px, ${y * 8}px, 0) rotateX(${y * -4}deg) rotateY(${x * 5}deg) rotateZ(1.5deg)`;
+    });
+
+    developerCard.addEventListener("mouseleave", () => {
+        developerCard.style.transform = "";
+    });
+}
+
+// Give project cards a small pointer-follow glow.
+$$(".project-card, .featured-project").forEach(card => {
+    card.addEventListener("mousemove", event => {
+        const rect = card.getBoundingClientRect();
+        card.style.setProperty("--pointer-x", `${event.clientX - rect.left}px`);
+        card.style.setProperty("--pointer-y", `${event.clientY - rect.top}px`);
+    });
+});
+
+// Smooth anchor navigation with a tiny landing offset.
+$$('a[href^="#"]').forEach(link => {
+    link.addEventListener("click", event => {
+        const id = link.getAttribute("href");
+        const target = id && document.querySelector(id);
+
+        if (!target) return;
+
+        event.preventDefault();
+
+        const offset = window.innerWidth <= 980 ? 78 : 92;
+        const top = target.getBoundingClientRect().top + window.scrollY - offset;
+
+        window.scrollTo({
+            top,
+            behavior: "smooth"
+        });
+    });
+});
